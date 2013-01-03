@@ -47,32 +47,51 @@ def patchEnvelope(envelope):
 # Brute force in with a patch to the envelope, which also requires a patch to SUDS :-(
 # TODO: Get patch accepted in SUDS or rewrite to use DOM level code
 class MarketoSignaturePlugin(MessagePlugin):
+#    authfragment = """
+#    <SOAP-ENV:Header>
+#    <ns1:AuthenticationHeader>
+#    <mktowsUserId>%(userid)s</mktowsUserId>
+#    <requestSignature>%(signature)s</requestSignature>
+#    <requestTimestamp>%(timestamp)s</requestTimestamp>
+#    </ns1:AuthenticationHeader>
+#    </SOAP-ENV:Header>
+#    """
     authfragment = """
-    <SOAP-ENV:Header>
     <ns1:AuthenticationHeader>
     <mktowsUserId>%(userid)s</mktowsUserId>
     <requestSignature>%(signature)s</requestSignature>
     <requestTimestamp>%(timestamp)s</requestTimestamp>
     </ns1:AuthenticationHeader>
-    </SOAP-ENV:Header>
     """
     def __init__(self, userid, secret, *args, **kwargs):
         self.userid = userid
         self.secret = secret
         self.debug = kwargs.get("debug", True)
-    def sending(self, context):
+
+    def marshalled(self, context):
         userid = self.userid
         timestamp = rfc3339(datetime.datetime.now())
         secret = self.secret
         signature = sign(secret, timestamp+userid)
         auth = self.authfragment % locals()
         envelope = context.envelope
-        envelope = envelope.replace("<SOAP-ENV:Header/>", auth)
-        envelope = patchEnvelope(envelope)
+
+        #Set the right ns prefixes
+        envelope.nsprefixes[ 'ns1' ] = envelope.nsprefixes[ 'ns0' ]
+        envelope.clearPrefix( 'ns0' )
+
+        #Add our auth to the header element
+        header = envelope.getChild('Header')
+        header.setText(auth)
+
+        #Set the proper body prefixes
+        body = envelope.getChild( 'Body' )
+        body.prefix = 'SOAP-ENV'
+        body.children[0].prefix = 'ns1'
+
         if self.debug:
-            with open("/tmp/envelope.txt","w") as f: f.write(envelope)
-        context.envelope = envelope
-        return context
+            with open("/tmp/envelope.txt","w") as f: f.write(envelope.str())
+
     
 def MarketoClientFactory(ini, **kwargs):
     import json
@@ -82,6 +101,7 @@ def MarketoClientFactory(ini, **kwargs):
         ini[key] = str(item)
     ini.update(kwargs)
     wsdl = ini["wsdl"]
+    cache = None
     if '://' not in wsdl:
         if os.path.isfile(wsdl):
             wsdl = 'file://' + os.path.abspath(wsdl)
