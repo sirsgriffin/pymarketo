@@ -82,7 +82,11 @@ class MarketoSignaturePlugin(MessagePlugin):
 
         #Add our auth to the header element
         header = envelope.getChild('Header')
-        header.setText(auth)
+        authns = Element( 'ns1:AuthenticationHeader' )
+        authns.append( Element( 'mktowsUserId' ).setText(self.userid) )
+        authns.append( Element( 'requestSignature' ).setText(signature) )
+        authns.append( Element( 'requestTimestamp' ).setText(timestamp) )
+        header.append( authns )
 
         #Set the proper body prefixes
         body = envelope.getChild( 'Body' )
@@ -99,19 +103,23 @@ def MarketoClientFactory(ini, **kwargs):
         ini = json.loads(f.read())
     for key, item in ini.items():
         ini[key] = str(item)
+
     ini.update(kwargs)
     wsdl = ini["wsdl"]
+
     cache = None
     if '://' not in wsdl:
         if os.path.isfile(wsdl):
             wsdl = 'file://' + os.path.abspath(wsdl)
-        cache = None # TODO: Evaluate using cache
-    client = Client(wsdl, cache=cache, plugins=[MarketoSignaturePlugin(ini["userid"],ini["encryption_key"])])
+    client = Client(wsdl, location=ini['endpoint'], cache=cache, plugins=[MarketoSignaturePlugin(ini["userid"],ini["encryption_key"])])
+
     headers = {}
     client.set_options(headers=headers)
+
     if kwargs.has_key('proxy'):
         if kwargs['proxy'].has_key('https'):
             raise NotImplementedError('Connecting to a proxy over HTTPS not supported.')
         client.set_options(proxy=kwargs['proxy'])
+
     return client
 
