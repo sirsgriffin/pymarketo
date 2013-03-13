@@ -1,4 +1,4 @@
-from marketo.client import MarketoClientFactory
+from pymarketo.client import MarketoClientFactory
 import os
 import sys #@UnusedImport
 import time #@UnusedImport
