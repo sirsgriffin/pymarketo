@@ -47,15 +47,6 @@ def patchEnvelope(envelope):
 # Brute force in with a patch to the envelope, which also requires a patch to SUDS :-(
 # TODO: Get patch accepted in SUDS or rewrite to use DOM level code
 class MarketoSignaturePlugin(MessagePlugin):
-#    authfragment = """
-#    <SOAP-ENV:Header>
-#    <ns1:AuthenticationHeader>
-#    <mktowsUserId>%(userid)s</mktowsUserId>
-#    <requestSignature>%(signature)s</requestSignature>
-#    <requestTimestamp>%(timestamp)s</requestTimestamp>
-#    </ns1:AuthenticationHeader>
-#    </SOAP-ENV:Header>
-#    """
     authfragment = """
     <ns1:AuthenticationHeader>
     <mktowsUserId>%(userid)s</mktowsUserId>
